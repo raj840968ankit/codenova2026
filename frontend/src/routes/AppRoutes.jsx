@@ -4,6 +4,8 @@ import { Register } from '../pages/Register';
 import { Home } from '../pages/Home';
 import { Project } from '../pages/Project';
 import { UserAuth } from '../auth/UserAuth';
+import { ResetPassword } from '../pages/ResetPassword';
+import { AcceptInvite } from '../pages/AcceptInvite';
 
 export const AppRoutes = () => {
   return (
@@ -13,6 +15,8 @@ export const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/project" element={<UserAuth><Project /></UserAuth>} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/accept-invite/:token" element={<AcceptInvite />} />
       </Routes>
     </BrowserRouter>
   );

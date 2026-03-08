@@ -8,15 +8,30 @@ const projectSchema = new mongoose.Schema({
         lowercase: true,
         unique: [true, 'Project name must be unique'],
     },
+
+    admin: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+        required: true
+    },
+
     users: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "user"
     }],
-    fileTree : {
-        type : Object,
-        default : {}
+
+    fileTree: {
+        type: Object,
+        default: {}
+    },
+
+    filePermissions: {
+        type: Object,
+        default: {}
     }
+
 });
 
 const Project = mongoose.model("Project", projectSchema);
+
 export default Project;

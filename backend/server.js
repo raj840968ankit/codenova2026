@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 3001
 
 const server = http.createServer(app)
 
+
 const io = new Server(server, {
     cors: {
         origin: env.CLIENT_URL,  // Allow requests from the client URL
@@ -39,7 +40,7 @@ io.use(async (socket, next) => {
         // ✅ Parse cookies and extract token
         const parsedCookie = cookie.parse(rawCookie || '');
         const token = parsedCookie.token;
-        
+
         if (!token) {
             return next(new Error('Authentication error'));
         }
@@ -95,6 +96,14 @@ io.on('connection', (socket) => {
     // Example with socket.io
     socket.on('file-delete', ({ fileName, projectId, sender }) => {
         socket.to(projectId).emit('file-delete', { fileName, sender });
+    });
+
+    socket.on("file-permission-update", ({ projectId, filePermissions }) => {
+
+        socket.to(projectId).emit("file-permission-update", {
+            filePermissions
+        });
+
     });
 
     socket.on('disconnect', () => {

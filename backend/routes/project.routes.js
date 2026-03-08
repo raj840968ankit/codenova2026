@@ -19,6 +19,37 @@ router.put('/add-user',
     projectController.addUserToProjectController
 ); //! add user to project
 
+
+router.post(
+    '/invite-user',
+    authUser,
+    body('projectId').isString().withMessage('Project ID is required'),
+    body('users')
+        .isArray({ min: 1 })
+        .withMessage('Users must be an array with at least one user'),
+    projectController.inviteUsersToProjectController
+);
+
+
+router.get(
+    '/invite/accept/:token',
+    projectController.acceptProjectInvitationController
+);
+
+
+router.get(
+    '/invite/reject/:token',
+    projectController.rejectProjectInvitationController
+);
+
+// Final confirmation after login
+router.post(
+    "/invite/confirm",
+    authUser,
+    body("token").isString().withMessage("Token is required"),
+    projectController.confirmProjectInvitationController
+);
+
 router.get('/get-project/:projectId',authUser, projectController.getProjectByIdController); //! get project by id
 
 router.put('/update-file-tree',
@@ -27,5 +58,14 @@ router.put('/update-file-tree',
     body('fileTree').isObject().withMessage('File tree is required'),
     projectController.updateFileTree
 )
+
+router.put(
+    '/assign-editor',
+    authUser,
+    body('projectId').isString().withMessage('Project ID is required'),
+    body('fileName').isString().withMessage('File name is required'),
+    body('userId').isString().withMessage('User ID is required'),
+    projectController.assignFileEditorController
+);
 
 export const projectRouter = router;

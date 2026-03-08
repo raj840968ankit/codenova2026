@@ -9,27 +9,29 @@ import {
 import { useContext } from "react";
 import { UserContext } from "../context/user.context.jsx";
 import Markdown from "markdown-to-jsx";
-import hljs from "highlight.js";
+// import hljs from "highlight.js";
+// import "highlight.js/styles/nord.css";
 import { getWebContainer } from "../config/webContainer.js";
+import Editor from "@monaco-editor/react";
 
 // Component to handle syntax highlighting for code blocks in Markdown
-function SyntaxHighlightedCode(props) {
-    const ref = useRef(null);
+// function SyntaxHighlightedCode(props) {
+//     const ref = useRef(null);
 
-    useEffect(() => {
-        // Check if the ref exists, if the class includes 'lang-' (indicating a language),
-        // and if hljs is available globally.
-        if (ref.current && props.className?.includes("lang-") && window.hljs) {
-            // Highlight the code element
-            window.hljs.highlightElement(ref.current);
+//     useEffect(() => {
+//         // Check if the ref exists, if the class includes 'lang-' (indicating a language),
+//         // and if hljs is available globally.
+//         if (ref.current && props.className?.includes("lang-") && window.hljs) {
+//             // Highlight the code element
+//             window.hljs.highlightElement(ref.current);
 
-            // Remove the data-highlighted attribute to allow re-highlighting if content changes
-            ref.current.removeAttribute("data-highlighted");
-        }
-    }, [props.className, props.children]); // Re-run if class or children (code content) changes
+//             // Remove the data-highlighted attribute to allow re-highlighting if content changes
+//             ref.current.removeAttribute("data-highlighted");
+//         }
+//     }, [props.className, props.children]); // Re-run if class or children (code content) changes
 
-    return <code {...props} ref={ref} />;
-}
+//     return <code {...props} ref={ref} />;
+// }
 
 export const Project = () => {
     // State variables for UI and application logic
@@ -40,7 +42,11 @@ export const Project = () => {
     const [usersWithProjects, setUsersWithProjects] = useState([]); // Users currently collaborating on this project
     const [message, setMessage] = useState(""); // Current message being typed in the chat input
     const [messages, setMessages] = useState([]); // Array to store all chat messages
+
     const { user } = useContext(UserContext); // Current authenticated user from context
+    const location = useLocation(); // Hook to access route state (project ID)
+    const isAdmin = location.state.project.admin === user?._id;
+
     const messageBox = useRef(); // Ref for the chat message container to enable auto-scrolling
     const [fileTree, setFileTree] = useState({}); // Represents the project's file structure
     const [currentFile, setCurrentFile] = useState(null); // The currently active file in the editor
@@ -50,7 +56,7 @@ export const Project = () => {
     const [runProcess, setRunProcess] = useState(null); // Reference to the running WebContainer process
     const [runError, setRunError] = useState(""); // Add this state at the top
 
-    const location = useLocation(); // Hook to access route state (project ID)
+    const [filePermissions, setFilePermissions] = useState({});
 
     // Effect hook for initial setup: fetching users, initializing socket, and WebContainer
     useEffect(() => {
@@ -77,39 +83,54 @@ export const Project = () => {
         });
 
         // Listen for AI-generated messages, which might include file tree updates
-        receiveMessage("server-ai-message", ({ aiResult, sender }) => {
+        receiveMessage("server-ai-message", async ({ aiResult, sender }) => {
+
             const message = JSON.parse(aiResult);
             const receivedFileTree = message.fileTree || {};
 
-            // Ensure message.fileTree is an object before mounting and setting state
-            webContainer?.mount(receivedFileTree);
+            // Mount files into WebContainer only if it exists
+            if (webContainer) {
+                await webContainer.mount(receivedFileTree);
+            }
 
-            // Merge with existing fileTree
             setFileTree((prev) => {
                 const merged = { ...prev, ...receivedFileTree };
                 saveFileTree(merged);
                 return merged;
             });
+
             appendAIMessage({ message, sender });
+
         });
+
+        receiveMessage("file-permission-update", ({ filePermissions }) => {
+            console.log("permission update received", filePermissions);
+            setFilePermissions(filePermissions);
+
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
-        if (!webContainer) {
-            getWebContainer().then((container) => setWebContainer(container));
-            console.log("WebContainer started");
-        }
-    }, [webContainer]);
+        const initWebContainer = async () => {
+            const container = await getWebContainer();
+            setWebContainer(container);
+            console.log("WebContainer ready");
+        };
+
+        initWebContainer();
+    }, []);
 
     // Fetch users with projects (collaborators) on mount and when project changes
     useEffect(() => {
         const fetchUsersWithProjects = async () => {
             try {
                 const response = await axios.get(
-                    `/projects/get-project/${location.state.project._id}`
+                    `/projects/get-project/${location.state.project._id}`,
                 );
                 setUsersWithProjects(response.data.users);
                 setFileTree(response.data.fileTree);
+                setFilePermissions(response.data.filePermissions || {});
             } catch (error) {
                 console.error("Error fetching users with projects:", error);
             }
@@ -168,7 +189,7 @@ export const Project = () => {
         setSelectedUserIds((prev) =>
             prev.includes(userId)
                 ? prev.filter((id) => id !== userId)
-                : [...prev, userId]
+                : [...prev, userId],
         );
     };
 
@@ -178,13 +199,16 @@ export const Project = () => {
 
         const addCollaborators = async () => {
             try {
-                await axios.put("projects/add-user", {
+                await axios.post("/projects/invite-user", {
                     projectId: location.state.project._id,
                     users: selectedUserIds,
                 });
+
+                alert("Invitation sent successfully");
+
                 // Refresh collaborators after adding
                 const updated = await axios.get(
-                    `/projects/get-project/${location.state.project._id}`
+                    `/projects/get-project/${location.state.project._id}`,
                 );
                 setUsersWithProjects(updated.data.users);
             } catch (error) {
@@ -255,7 +279,7 @@ export const Project = () => {
 
     const handleRunProject = async () => {
         if (!webContainer) {
-            const msg = ("WebContainer not initialized.");
+            const msg = "WebContainer not initialized.";
             console.error(msg);
             setRunError(msg);
             return;
@@ -270,11 +294,14 @@ export const Project = () => {
                 new WritableStream({
                     write(chunk) {
                         console.log(chunk);
-                        if (typeof chunk === "string" && chunk.toLowerCase().includes("error")) {
-                            setRunError(prev => prev + "\n" + chunk);
+                        if (
+                            typeof chunk === "string" &&
+                            chunk.toLowerCase().includes("error")
+                        ) {
+                            setRunError((prev) => prev + "\n" + chunk);
                         }
                     },
-                })
+                }),
             );
             await installProcess.exit; // Wait for install to complete
 
@@ -287,11 +314,14 @@ export const Project = () => {
                 new WritableStream({
                     write(chunk) {
                         console.log(chunk);
-                        if (typeof chunk === "string" && chunk.toLowerCase().includes("error")) {
-                            setRunError(prev => prev + "\n" + chunk);
+                        if (
+                            typeof chunk === "string" &&
+                            chunk.toLowerCase().includes("error")
+                        ) {
+                            setRunError((prev) => prev + "\n" + chunk);
                         }
                     },
-                })
+                }),
             );
             setRunProcess(tempRunProcess);
 
@@ -305,18 +335,58 @@ export const Project = () => {
         }
     };
 
+
+    const assignEditor = async (fileName, userId) => {
+
+        try {
+
+            const res = await axios.put("/projects/assign-editor", {
+                projectId: location.state.project._id,
+                fileName,
+                userId
+            });
+
+            setFilePermissions(res.data.filePermissions);
+
+            sendMessage("file-permission-update", {
+                projectId: location.state.project._id,
+                filePermissions: res.data.filePermissions
+            });
+
+        } catch (err) {
+
+            console.error(err);
+
+        }
+
+    };
+
+    const canEdit = (() => {
+        if (isAdmin) return true;
+        if (!currentFile) return false;
+
+        const permittedUser = filePermissions[currentFile];
+
+        return permittedUser && permittedUser.toString() === user?._id?.toString();
+    })();
+
     return (
-        <main className="flex flex-col lg:flex-row w-screen overflow-hidden font-inter min-h-screen lg:h-screen">
+        <main className="flex flex-col lg:flex-row w-screen min-h-screen lg:h-screen overflow-y-auto lg:overflow-hidden font-inter gap-0 lg:gap-4 p-0 lg:p-4">
             {/* Left Section: Chat and Collaborators Panel */}
             {/* On mobile, this section takes full width and full height of the screen. */}
             {/* On large screens, it maintains its fixed width. */}
-            <section className="left flex flex-col w-full h-[calc(100vh-2rem)] lg:h-full lg:w-[400px] bg-slate-100 relative shadow-lg rounded-lg m-2 lg:m-4 overflow-hidden">
+            <section className="left flex flex-col w-full max-lg:h-screen lg:h-full lg:w-[350px] flex-shrink-0 bg-slate-100 relative shadow-lg rounded-lg overflow-hidden">
                 {/* Header for Chat/Collaborators */}
                 <header className="flex justify-between items-center p-3 px-4 w-full bg-slate-200 rounded-t-lg shadow-sm flex-shrink-0">
                     <button
-                        className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 shadow-md"
-                        onClick={() => setIsModalOpen(true)}
-                        aria-label="Add Collaborators"
+                        disabled={!isAdmin}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors duration-200 shadow-md
+        ${isAdmin
+                                ? "bg-blue-600 text-white hover:bg-blue-700"
+                                : "bg-gray-400 text-gray-200 cursor-not-allowed"
+                            }`}
+                        onClick={() => isAdmin && setIsModalOpen(true)}
+                        aria-label="Invite Collaborators"
                     >
                         <i className="ri-user-add-fill text-lg"></i>
                         <span className="hidden sm:inline">Add Collaborators</span>
@@ -378,15 +448,7 @@ export const Project = () => {
                                             className="text-sm markdown-body"
                                             style={{ color: "white" }}
                                         >
-                                            <Markdown
-                                                options={{
-                                                    overrides: {
-                                                        code: {
-                                                            component: SyntaxHighlightedCode,
-                                                        },
-                                                    },
-                                                }}
-                                            >
+                                            <Markdown>
                                                 {msg.message.text}
                                             </Markdown>
                                         </div>
@@ -527,59 +589,86 @@ export const Project = () => {
             {/* Right Section: File Explorer, Code Editor, and Iframe Preview */}
             {/* On mobile, this section will stack its children vertically, each taking full screen height when scrolled into view. */}
             {/* On large screens, it takes the remaining width and full height, maintaining the desktop layout. */}
-            <section className="right bg-slate-50 flex-grow flex flex-col lg:flex-row m-2 lg:m-4 rounded-lg shadow-lg">
+            <section className="right bg-slate-50 flex-grow flex flex-col lg:flex-row lg:h-full m-0 rounded-lg shadow-lg">
                 {/* File Explorer */}
                 {/* On mobile, it takes full width and full screen height. */}
                 {/* On large screens, it takes a fixed max-width and full height. */}
-                <div className="explorer h-[calc(100vh-2rem)] lg:h-full lg:max-w-[250px] w-full bg-slate-200 p-2 border-b lg:border-b-0 lg:border-r border-gray-300 flex-shrink-0 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none overflow-y-auto">
+                <div className="explorer w-full max-lg:h-screen lg:max-w-[250px] lg:h-full bg-slate-200 p-2 border-b lg:border-b-0 lg:border-r border-gray-300 flex-shrink-0 rounded-t-lg lg:rounded-l-lg lg:rounded-tr-none overflow-y-auto">
                     <h2 className="text-lg font-bold text-gray-800 mb-3 px-2">Files</h2>
                     <div className="fileTree w-full">
                         {Object.keys(fileTree || {}).length > 0 ? (
                             Object.keys(fileTree).map((file, index) => (
-                                <div key={index} className="flex items-center group">
-                                    <button
-                                        onClick={() => {
-                                            setCurrentFile(file);
-                                            setOpenFiles((prev) =>
-                                                prev.includes(file) ? [...prev] : [...prev, file]
-                                            );
-                                        }}
-                                        className="tree-element cursor-pointer p-2 px-4 flex items-center gap-2 w-full text-left rounded-md hover:bg-blue-200 transition-colors duration-150 mb-1 flex-grow"
-                                    >
-                                        <i className="ri-file-line text-blue-600"></i>
-                                        <p className="font-medium text-gray-800 truncate">{file}</p>
-                                    </button>
-                                    {/* Delete Icon */}
-                                    <button
-                                        className="ml-2 p-1 rounded hover:bg-red-100 text-red-600 transition-colors duration-150"
-                                        title="Delete file"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            // Remove from fileTree
-                                            setFileTree((prev) => {
-                                                const updated = { ...prev };
-                                                delete updated[file];
-                                                saveFileTree(updated);
-                                                // Emit file delete event to other collaborators
-                                                sendMessage("file-delete", {
-                                                    fileName: file,
-                                                    projectId: location.state.project._id,
-                                                    sender: user.email,
+                                <div
+                                    key={index}
+                                    className="flex flex-col p-2 mb-2 rounded-md hover:bg-blue-400 transition-colors"
+                                >
+
+                                    {/* Row 1 : filename + delete */}
+                                    <div className="flex items-center justify-between">
+
+                                        <button
+                                            onClick={() => {
+                                                setCurrentFile(file);
+                                                setOpenFiles((prev) =>
+                                                    prev.includes(file) ? prev : [...prev, file]
+                                                );
+                                            }}
+                                            className="flex items-center gap-2 text-left truncate"
+                                        >
+                                            <i className="ri-file-line text-blue-600"></i>
+                                            <span className="truncate font-medium">{file}</span>
+                                        </button>
+
+                                        <button
+                                            className="p-1 rounded hover:bg-red-100 text-red-600"
+                                            title="Delete file"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+
+                                                setFileTree((prev) => {
+                                                    const updated = { ...prev };
+                                                    delete updated[file];
+                                                    saveFileTree(updated);
+
+                                                    sendMessage("file-delete", {
+                                                        fileName: file,
+                                                        projectId: location.state.project._id,
+                                                        sender: user.email,
+                                                    });
+
+                                                    return updated;
                                                 });
-                                                return updated;
-                                            });
-                                            // Remove from openFiles and update currentFile if needed
-                                            setOpenFiles((prev) => {
-                                                const filtered = prev.filter((f) => f !== file);
+
+                                                setOpenFiles((prev) => prev.filter((f) => f !== file));
+
                                                 if (currentFile === file) {
-                                                    setCurrentFile(filtered[0] || null);
+                                                    setCurrentFile(null);
                                                 }
-                                                return filtered;
-                                            });
-                                        }}
+                                            }}
+                                        >
+                                            <i className="ri-delete-bin-6-line"></i>
+                                        </button>
+
+                                    </div>
+
+                                    {/* Row 2 : dropdown */}
+
+                                    <select
+                                        disabled={!isAdmin}
+                                        value={filePermissions[file]?.toString() || ""}
+                                        onChange={(e) => assignEditor(file, e.target.value)}
+                                        className="mt-1 text-xs border rounded px-2 py-1 bg-white w-full"
                                     >
-                                        <i className="ri-delete-bin-6-line"></i>
-                                    </button>
+                                        <option value="">None</option>
+
+                                        {usersWithProjects.map((u) => (
+                                            <option key={u._id} value={u._id}>
+                                                {u.email}
+                                            </option>
+                                        ))}
+                                    </select>
+
+
                                 </div>
                             ))
                         ) : (
@@ -593,7 +682,7 @@ export const Project = () => {
                 {/* Code Editor Area */}
                 {/* On mobile, this takes full screen height, stacking below file explorer. */}
                 {/* On large, it takes flex-grow and is next to explorer. */}
-                <div className="code-editor flex flex-col flex-grow h-[calc(100vh-2rem)] lg:h-full bg-white rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none">
+                <div className="code-editor flex flex-col flex-grow max-lg:h-screen lg:h-full bg-white rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none">
                     {/* File Tabs and Run Button */}
                     {/* File Tabs and Run Button */}
                     <div className="top flex justify-between items-center w-full bg-slate-100 border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
@@ -651,10 +740,19 @@ export const Project = () => {
                             ))}
                         </div>
                         <div className="actions flex gap-2 pr-2">
+                            {!webContainer && (
+                                <p className="text-xs text-gray-500 mr-3">
+                                    Initializing environment...
+                                </p>
+                            )}
                             <button
                                 onClick={handleRunProject}
-                                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 shadow-md"
-                                aria-label="Run project"
+                                disabled={!webContainer}
+                                className={`px-4 py-2 rounded-md shadow-md transition-colors duration-200
+        ${webContainer
+                                        ? "bg-green-600 text-white hover:bg-green-700"
+                                        : "bg-gray-400 text-gray-200 cursor-not-allowed"
+                                    }`}
                             >
                                 <i className="ri-play-fill mr-1"></i> Run
                             </button>
@@ -667,45 +765,40 @@ export const Project = () => {
                             fileTree[currentFile] &&
                             fileTree[currentFile].file ? (
                             <div className="code-editor-area h-full overflow-auto flex-grow bg-slate-900 text-white rounded-b-lg">
-                                <pre className="hljs h-full m-0 p-4 text-sm leading-relaxed overflow-auto">
-                                    <code
-                                        className="hljs h-full outline-none block"
-                                        contentEditable
-                                        suppressContentEditableWarning
-                                        onBlur={(e) => {
-                                            const updatedContent = e.target.innerText;
-                                            const ft = {
-                                                ...fileTree,
-                                                [currentFile]: {
-                                                    file: {
-                                                        contents: updatedContent,
-                                                    },
-                                                },
-                                            };
-                                            setFileTree(ft);
-                                            saveFileTree(ft); // Save to backend
+                                <Editor
+                                    key={currentFile + canEdit}
+                                    height="100%"
+                                    defaultLanguage="javascript"
+                                    theme="vs-dark"
+                                    value={fileTree[currentFile]?.file?.contents || ""}
+                                    options={{
+                                        readOnly: !canEdit
+                                    }}
+                                    onChange={(value) => {
+                                        if (!canEdit) return;
 
-                                            // Emit file update to other collaborators
-                                            sendMessage("file-update", {
-                                                fileName: currentFile,
-                                                contents: updatedContent,
-                                                projectId: location.state.project._id,
-                                                sender: user.email,
-                                            });
-                                        }}
-                                        dangerouslySetInnerHTML={{
-                                            __html: hljs.highlight(
-                                                fileTree[currentFile]?.file.contents || "",
-                                                { language: "javascript" } // Assuming JS for highlighting, adjust as needed
-                                            ).value,
-                                        }}
-                                        style={{
-                                            whiteSpace: "pre-wrap", // Preserve whitespace and wrap lines
-                                            minHeight: "100%", // Ensure it takes full height
-                                            counterSet: "line-numbering", // For potential future line numbering
-                                        }}
-                                    />
-                                </pre>
+                                        const updatedContent = value || "";
+
+                                        const ft = {
+                                            ...fileTree,
+                                            [currentFile]: {
+                                                file: {
+                                                    contents: updatedContent,
+                                                },
+                                            },
+                                        };
+
+                                        setFileTree(ft);
+                                        saveFileTree(ft);
+
+                                        sendMessage("file-update", {
+                                            fileName: currentFile,
+                                            contents: updatedContent,
+                                            projectId: location.state.project._id,
+                                            sender: user.email,
+                                        });
+                                    }}
+                                />
                             </div>
                         ) : (
                             <div className="flex-grow h-full flex items-center justify-center text-gray-500 text-lg bg-gray-100 rounded-b-lg">
@@ -719,7 +812,7 @@ export const Project = () => {
                 {/* On mobile, this will stack below the code editor and take full screen height. */}
                 {/* On large screens, it will be next to it, maintaining its desktop size. */}
                 {(runError || (iframeUrl && webContainer)) && (
-                    <div className="flex flex-col h-[calc(100vh-2rem)] lg:h-full w-full lg:min-w-[400px] lg:max-w-[50%] bg-gray-100 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none shadow-inner border-t lg:border-t-0 lg:border-l border-gray-300 relative">
+                    <div className="flex flex-col w-full max-lg:h-screen lg:min-w-[400px] lg:max-w-[50%] lg:h-full bg-gray-100 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none shadow-inner border-t lg:border-t-0 lg:border-l border-gray-300 relative">
                         {/* Error Section - Updated to match iframe styling */}
                         {runError && (
                             <div className="flex flex-col h-full w-full">
@@ -737,7 +830,9 @@ export const Project = () => {
 
                                 {/* Error Content */}
                                 <div className="flex-grow bg-red-50 p-4 overflow-auto">
-                                    <pre className="text-red-700 whitespace-pre-wrap text-sm">{runError}</pre>
+                                    <pre className="text-red-700 whitespace-pre-wrap text-sm">
+                                        {runError}
+                                    </pre>
                                 </div>
                             </div>
                         )}
