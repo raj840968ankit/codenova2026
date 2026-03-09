@@ -151,15 +151,15 @@ export const googleAuthController = async (req, res) => {
 
     res.cookie("google_oauth_state", state, {
         httpOnly: true,
-        sameSite: "Lax",
         secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
         maxAge: 10 * 60 * 1000,
     });
 
     res.cookie("google_oauth_verifier", codeVerifier, {
         httpOnly: true,
-        sameSite: "Lax",
         secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
         maxAge: 10 * 60 * 1000,
     });
 
@@ -250,7 +250,7 @@ export const githubAuthController = async (req, res) => {
 
     res.cookie("github_oauth_state", state, {
         httpOnly: true,
-        sameSite: "Lax",
+        sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
         secure: process.env.NODE_ENV === "production",
         maxAge: 10 * 60 * 1000,
     });
