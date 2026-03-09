@@ -15,17 +15,17 @@ import argon2 from "argon2";
 export const createUserController = async (req, res) => {
     //?check for validation errors  
     const errors = validationResult(req)
-    if(!errors.isEmpty()){
-        return res.status(400).json({errors : errors.array()})
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
     }
 
     try {
-        const {email, password} = req.body;
+        const { email, password } = req.body;
 
-        const userExists = await User.findOne({email})
+        const userExists = await User.findOne({ email })
 
-        if(userExists){
-            return res.status(400).json({errors : "User already exists"})
+        if (userExists) {
+            return res.status(400).json({ errors: "User already exists" })
         }
 
         const user = await createUser(req.body)
@@ -43,11 +43,11 @@ export const createUserController = async (req, res) => {
 
         delete user._doc.password;  //remove password from user object before sending it to the client
         delete user._doc.__v;  //remove __v field from user object before sending it to the client
-        
-        res.status(201).send({user})
+
+        res.status(201).send({ user })
 
     } catch (error) {
-        console.log('❌ Server Register Error:', error); 
+        console.log('❌ Server Register Error:', error);
         res.status(400).send(error.message);
     }
 }
@@ -55,20 +55,20 @@ export const createUserController = async (req, res) => {
 export const loginUserController = async (req, res) => {
     //?check for validation errors  
     const errors = validationResult(req)
-    if(!errors.isEmpty()){
-        return res.status(400).json({errors : errors.array()})
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() })
     }
 
     try {
-        const {email, password} = req.body
-        const user = await User.findOne({email}).select('+password')  //select password field as it is not selected by default
-        if(!user) {
-            return res.status(401).json({errors: 'Invalid credentials'})
+        const { email, password } = req.body
+        const user = await User.findOne({ email }).select('+password')  //select password field as it is not selected by default
+        if (!user) {
+            return res.status(401).json({ errors: 'Invalid credentials' })
         }
 
         const isValidPassword = await user.isValidPassword(password)  //check if password is valid
-        if(!isValidPassword) {
-            return res.status(401).json({errors: 'Invalid credentials'})
+        if (!isValidPassword) {
+            return res.status(401).json({ errors: 'Invalid credentials' })
         }
 
         const token = user.generateJWT()  //generate JWT token for the user
@@ -84,22 +84,22 @@ export const loginUserController = async (req, res) => {
 
         delete user._doc.password;  //remove password from user object before sending it to the client
         delete user._doc.__v;  //remove __v field from user object before sending it to the client
-        
-        res.status(201).json({user})
+
+        res.status(201).json({ user })
 
     } catch (error) {
-        console.log('❌ Server Login Error:', error); 
+        console.log('❌ Server Login Error:', error);
         res.status(400).send(error.message);
     }
 }
 
 export const getUserProfileController = async (req, res) => {
-    try {        
+    try {
         res.status(200).json({
-            user : req.user
+            user: req.user
         })
     } catch (error) {
-        console.log('❌ Server Profile Error:', error); 
+        console.log('❌ Server Profile Error:', error);
         res.status(400).send(error.message);
     }
 }
@@ -107,7 +107,7 @@ export const getUserProfileController = async (req, res) => {
 export const logoutUserController = async (req, res) => {
     try {
         const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
-        
+
         //! we have set token in redis when user log out and will check it in auth middleware for blacklisting
         //await redisClient.set(token, 'logout', 'EX', 60 * 60 * 24 * 7);
 
@@ -120,7 +120,7 @@ export const logoutUserController = async (req, res) => {
         });
 
         res.status(200).json({ message: 'User logged out successfully' });
-        
+
     } catch (error) {
         console.log('❌ Server Logout Error:', error);
         res.status(400).send(error.message);
@@ -149,17 +149,19 @@ export const googleAuthController = async (req, res) => {
         ["openid", "email", "profile"]
     );
 
+    const isProd = process.env.NODE_ENV === "production";
+
     res.cookie("google_oauth_state", state, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+        secure: isProd,
+        sameSite: isProd ? "None" : "Lax",
         maxAge: 10 * 60 * 1000,
     });
 
     res.cookie("google_oauth_verifier", codeVerifier, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+        secure: isProd,
+        sameSite: isProd ? "None" : "Lax",
         maxAge: 10 * 60 * 1000,
     });
 
@@ -191,8 +193,14 @@ export const googleAuthCallbackController = async (req, res) => {
         );
 
         // 🧼 Clear temp cookies
-        res.clearCookie("google_oauth_state");
-        res.clearCookie("google_oauth_verifier");
+        const cookieOptions = {
+            httpOnly: true,
+            secure: true,
+            sameSite: "None",
+        };
+
+        res.clearCookie("google_oauth_state", cookieOptions);
+        res.clearCookie("google_oauth_verifier", cookieOptions);
 
         // 🔽 Fetch user profile
         const googleUser = await fetch(
@@ -225,10 +233,12 @@ export const googleAuthCallbackController = async (req, res) => {
 
         const jwtToken = user.generateJWT();
 
+        const isProd = process.env.NODE_ENV === "production";
+
         res.cookie("token", jwtToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+            secure: isProd,
+            sameSite: isProd ? "None" : "Lax",
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
@@ -248,10 +258,12 @@ export const githubAuthController = async (req, res) => {
         ["read:user", "user:email"] // ✅ only scopes
     );
 
+    const isProd = process.env.NODE_ENV === "production";
+
     res.cookie("github_oauth_state", state, {
         httpOnly: true,
-        sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-        secure: process.env.NODE_ENV === "production",
+        sameSite: isProd ? "None" : "Lax",
+        secure: isProd,
         maxAge: 10 * 60 * 1000,
     });
 

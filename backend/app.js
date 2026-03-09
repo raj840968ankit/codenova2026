@@ -12,6 +12,8 @@ await connect();
 
 const app = express()
 
+app.set("trust proxy", 1);   // IMPORTANT for secure cookies on Render
+
 app.use(cors({
   origin: process.env.CLIENT_URL, // or your frontend domain
   credentials: true, // allow cookies to be sent

@@ -16,7 +16,7 @@ const server = http.createServer(app)
 const io = new Server(server, {
     cors: {
         origin: env.CLIENT_URL,  // Allow requests from the client URL
-        methods: ['GET', 'POST'],  // Allowed HTTP methods
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Allowed HTTP methods
         credentials: true,  // Allow cookies to be sent with requests
     },
 })
