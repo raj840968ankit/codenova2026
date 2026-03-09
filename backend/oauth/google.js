@@ -4,5 +4,5 @@ import { Google } from "arctic";
 export const googleOAuthClient = new Google(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
-    "http://localhost:3000/users/google/callback" // 🔴 change in prod
+    "https://codenovaapi2026.onrender.com/users/google/callback" // 🔴 change in prod
 );

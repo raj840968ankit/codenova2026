@@ -4,5 +4,5 @@ import { GitHub } from "arctic";
 export const githubOAuthClient = new GitHub(
     process.env.GITHUB_CLIENT_ID,
     process.env.GITHUB_CLIENT_SECRET,
-    "http://localhost:3000/users/github/callback" // 🔴 change in prod
+    "https://codenovaapi2026.onrender.com/users/github/callback" // 🔴 change in prod
 );
