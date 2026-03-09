@@ -589,7 +589,7 @@ export const Project = () => {
             {/* Right Section: File Explorer, Code Editor, and Iframe Preview */}
             {/* On mobile, this section will stack its children vertically, each taking full screen height when scrolled into view. */}
             {/* On large screens, it takes the remaining width and full height, maintaining the desktop layout. */}
-            <section className="right bg-slate-50 flex-grow flex flex-col lg:flex-row lg:h-full m-0 rounded-lg shadow-lg">
+            <section className="right bg-slate-50 flex-grow flex flex-col lg:flex-row lg:h-full m-0 rounded-lg shadow-lg min-w-0">
                 {/* File Explorer */}
                 {/* On mobile, it takes full width and full screen height. */}
                 {/* On large screens, it takes a fixed max-width and full height. */}
@@ -682,7 +682,7 @@ export const Project = () => {
                 {/* Code Editor Area */}
                 {/* On mobile, this takes full screen height, stacking below file explorer. */}
                 {/* On large, it takes flex-grow and is next to explorer. */}
-                <div className="code-editor flex flex-col flex-grow max-lg:h-screen lg:h-full bg-white rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none">
+                <div className="code-editor flex flex-col max-lg:h-screen lg:flex-1 lg:min-w-0 lg:h-full bg-white rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none">
                     {/* File Tabs and Run Button */}
                     {/* File Tabs and Run Button */}
                     <div className="top flex justify-between items-center w-full bg-slate-100 border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
@@ -812,7 +812,7 @@ export const Project = () => {
                 {/* On mobile, this will stack below the code editor and take full screen height. */}
                 {/* On large screens, it will be next to it, maintaining its desktop size. */}
                 {(runError || (iframeUrl && webContainer)) && (
-                    <div className="flex flex-col w-full max-lg:h-screen lg:min-w-[400px] lg:max-w-[50%] lg:h-full bg-gray-100 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none shadow-inner border-t lg:border-t-0 lg:border-l border-gray-300 relative">
+                    <div className="flex flex-col w-full max-lg:h-screen lg:min-w-[300px] lg:max-w-[50%] lg:h-full bg-gray-100 rounded-b-lg lg:rounded-r-lg lg:rounded-bl-none shadow-inner border-t lg:border-t-0 lg:border-l border-gray-300 relative">
                         {/* Error Section - Updated to match iframe styling */}
                         {runError && (
                             <div className="flex flex-col h-full w-full">
