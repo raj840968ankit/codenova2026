@@ -289,6 +289,10 @@ export const Project = () => {
         try {
             await webContainer.mount(fileTree);
 
+            if (runProcess) {
+                runProcess.kill();
+            }
+            
             const installProcess = await webContainer.spawn("npm", ["install"]);
             installProcess.output.pipeTo(
                 new WritableStream({
@@ -305,9 +309,7 @@ export const Project = () => {
             );
             await installProcess.exit; // Wait for install to complete
 
-            if (runProcess) {
-                runProcess.kill();
-            }
+            
 
             let tempRunProcess = await webContainer.spawn("npm", ["start"]);
             tempRunProcess.output.pipeTo(
