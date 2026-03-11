@@ -9,6 +9,8 @@ import crypto from "crypto";
 import { PasswordReset } from "../models/user.models.js";
 import { sendResetPasswordMail } from "../services/nodemailer.service.js";
 
+import { Contact, Feedback } from "../models/admin.model.js"; //!indicate
+
 import argon2 from "argon2";
 
 
@@ -471,3 +473,60 @@ export const resetPasswordController = async (req, res) => {
         res.status(500).json({ error: "Something went wrong" });
     }
 };
+
+
+//!indicate
+export const sendContactController = async (req, res) => {
+
+    try {
+
+        const { message } = req.body;
+
+        const email = req.user.email;
+
+        const contact = await Contact.create({
+            email,
+            message
+        });
+
+        return res.status(201).json({
+            message: "Contact message sent",
+            contact
+        });
+
+    } catch (error) {
+
+        console.error(error);
+        return res.status(500).json({ error: error.message });
+
+    }
+
+};
+//!indicate
+
+
+//!indicate
+export const sendFeedbackController = async (req, res) => {
+
+    try {
+
+        const { message } = req.body;
+
+        const feedback = await Feedback.create({
+            message
+        });
+
+        return res.status(201).json({
+            message: "Feedback sent",
+            feedback
+        });
+
+    } catch (error) {
+
+        console.error(error);
+        return res.status(500).json({ error: error.message });
+
+    }
+
+};
+//!indicate

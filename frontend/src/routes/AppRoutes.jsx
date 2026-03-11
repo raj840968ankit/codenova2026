@@ -7,6 +7,9 @@ import { UserAuth } from '../auth/UserAuth';
 import { ResetPassword } from '../pages/ResetPassword';
 import { AcceptInvite } from '../pages/AcceptInvite';
 
+import { Admin } from "../pages/Admin";  //!indicate
+import { AdminProtectedRoute } from './AdminProtectedRoutes';  //!indicate
+
 export const AppRoutes = () => {
   return (
     <BrowserRouter>
@@ -17,6 +20,11 @@ export const AppRoutes = () => {
         <Route path="/project" element={<UserAuth><Project /></UserAuth>} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+
+        {/* indicate */}
+        <Route path="/admin" element={<AdminProtectedRoute><Admin/></AdminProtectedRoute>}/>
+        {/* indiate */}
+
       </Routes>
     </BrowserRouter>
   );

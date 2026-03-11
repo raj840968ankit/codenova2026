@@ -136,7 +136,7 @@ export const inviteUsersToProjectController = async (req, res) => {
             const acceptLink = `${process.env.SERVER_URL}/projects/invite/accept/${token}`;
             const rejectLink = `${process.env.SERVER_URL}/projects/invite/reject/${token}`;
 
-            await sendProjectInvitationMail(
+            sendProjectInvitationMail(
                 invitedUser.email,
                 project.name,
                 loggedInUser.email,
@@ -221,7 +221,7 @@ export const rejectProjectInvitationController = async (req, res) => {
         invitation.status = "rejected";
         await invitation.save();
 
-        await sendInvitationRejectedMail(
+        sendInvitationRejectedMail(
             adminUser.email,
             project.name,
             invitedUser.email
@@ -293,7 +293,7 @@ export const confirmProjectInvitationController = async (req, res) => {
 
         const adminUser = await User.findById(invitation.invitedBy);
 
-        await sendInvitationAcceptedMail(
+        sendInvitationAcceptedMail(
             adminUser.email,
             project.name,
             loggedInUser.email

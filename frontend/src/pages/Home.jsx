@@ -12,6 +12,14 @@ export const Home = () => {
   const [projectName, setProjectName] = useState("");
   const [projects, setProjects] = useState([]); // State to hold projects
 
+  //!indicate
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+
+  const [contactMessage, setContactMessage] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  //!indicate
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,6 +62,44 @@ export const Home = () => {
       console.error("❌ Logout failed:", error);
     }
   };
+
+  //!indicate
+  const sendContact = async () => {
+    if (!contactMessage.trim()) return;
+
+    try {
+      await axios.post("/users/contact", {
+        message: contactMessage
+      });
+
+      alert("Message sent successfully");
+
+      setContactMessage("");
+      setShowContactModal(false);
+
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const sendFeedback = async () => {
+    if (!feedbackMessage.trim()) return;
+
+    try {
+      await axios.post("/users/feedback", {
+        message: feedbackMessage
+      });
+
+      alert("Feedback sent successfully");
+
+      setFeedbackMessage("");
+      setShowFeedbackModal(false);
+
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  //!indicate
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 font-inter">
@@ -177,6 +223,108 @@ export const Home = () => {
           </div>
         </div>
       )}
+
+      {/* indicate */}
+      {showContactModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-70 z-50">
+
+          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
+
+            <h2 className="text-2xl font-bold mb-4 text-center">
+              Contact Admin
+            </h2>
+
+            <textarea
+              className="w-full border rounded-lg p-3"
+              rows="4"
+              placeholder="Write your message..."
+              value={contactMessage}
+              onChange={(e) => setContactMessage(e.target.value)}
+            />
+
+            <div className="flex justify-end gap-3 mt-5">
+
+              <button
+                onClick={() => setShowContactModal(false)}
+                className="px-4 py-2 bg-gray-200 rounded-lg"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={sendContact}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+              >
+                Submit
+              </button>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+
+      {showFeedbackModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-70 z-50">
+
+          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
+
+            <h2 className="text-2xl font-bold mb-4 text-center">
+              Send Feedback
+            </h2>
+
+            <textarea
+              className="w-full border rounded-lg p-3"
+              rows="4"
+              placeholder="Share your feedback..."
+              value={feedbackMessage}
+              onChange={(e) => setFeedbackMessage(e.target.value)}
+            />
+
+            <div className="flex justify-end gap-3 mt-5">
+
+              <button
+                onClick={() => setShowFeedbackModal(false)}
+                className="px-4 py-2 bg-gray-200 rounded-lg"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={sendFeedback}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg"
+              >
+                Send Feedback
+              </button>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+
+      {/* CONTACT + FEEDBACK BUTTONS */}
+
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3">
+
+        <button
+          onClick={() => setShowContactModal(true)}
+          className="px-5 py-3 bg-blue-600 text-white rounded-lg shadow-lg hover:bg-blue-700"
+        >
+          Contact
+        </button>
+
+        <button
+          onClick={() => setShowFeedbackModal(true)}
+          className="px-5 py-3 bg-green-600 text-white rounded-lg shadow-lg hover:bg-green-700"
+        >
+          Feedback
+        </button>
+
+      </div>
+      {/* indicate */}
 
       {/* Add custom keyframe animations for better visual effects */}
       <style>{`

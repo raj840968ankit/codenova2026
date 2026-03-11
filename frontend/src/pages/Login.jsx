@@ -19,6 +19,12 @@ export const Login = () => {
     const navigate = useNavigate();
     const { setUser } = useContext(UserContext);
 
+    //!indicate
+    const [showAdminModal, setShowAdminModal] = useState(false);
+    const [adminEmail, setAdminEmail] = useState("");
+    const [adminPassword, setAdminPassword] = useState("");
+    //!indicate
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -69,6 +75,28 @@ export const Login = () => {
         setForgotEmail("");
         setMailSent(false);
     };
+
+
+    //!indicate
+    const handleAdminLogin = async () => {
+        try {
+
+            await axios.post("/admin/login", {
+                email: adminEmail,
+                password: adminPassword
+            });
+
+
+            navigate("/admin");
+
+        } catch (error) {
+
+            alert("Invalid admin credentials");
+            console.error(error);
+
+        }
+    };
+    //!indicate
 
     return (
         <>
@@ -161,6 +189,18 @@ export const Login = () => {
                             Create one
                         </Link>
                     </p>
+
+                    {/* indicate */}
+                    <p className="mt-4 text-center">
+                        <button
+                            onClick={() => setShowAdminModal(true)}
+                            className="text-blue-400 hover:underline"
+                        >
+                            Login as Admin
+                        </button>
+                    </p>
+                    {/* indicate */}
+
                 </div>
             </div>
 
@@ -215,6 +255,57 @@ export const Login = () => {
                     </div>
                 </div>
             )}
+
+            {/* indicate */}
+            {/* ================= ADMIN LOGIN MODAL ================= */}
+
+            {showAdminModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4">
+
+                    <div className="w-full max-w-sm bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl">
+
+                        <h3 className="text-xl font-semibold text-white mb-4 text-center">
+                            Login as Admin
+                        </h3>
+
+                        <input
+                            type="email"
+                            placeholder="Admin Email"
+                            value={adminEmail}
+                            onChange={(e) => setAdminEmail(e.target.value)}
+                            className="w-full px-4 py-3 rounded-lg bg-gray-700 text-white mb-4"
+                        />
+
+                        <input
+                            type="password"
+                            placeholder="Admin Password"
+                            value={adminPassword}
+                            onChange={(e) => setAdminPassword(e.target.value)}
+                            className="w-full px-4 py-3 rounded-lg bg-gray-700 text-white"
+                        />
+
+                        <div className="mt-6 flex justify-end gap-3">
+
+                            <button
+                                onClick={() => setShowAdminModal(false)}
+                                className="px-4 py-2 text-gray-300 hover:text-white"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                onClick={handleAdminLogin}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                            >
+                                Login
+                            </button>
+
+                        </div>
+
+                    </div>
+                </div>
+            )}
+            {/* indicate */}
         </>
     );
 };

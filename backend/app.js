@@ -8,6 +8,8 @@ import cors from 'cors'
 import { projectRouter } from './routes/project.routes.js'
 import { geminiRouter } from './routes/gemini.routes.js'
 
+import { adminRouter } from "./routes/admin.routes.js";    //!indicated
+
 await connect();
 
 const app = express()
@@ -34,6 +36,8 @@ app.use('/users', userRoutes)  //user routes
 app.use('/projects', projectRouter)  //project routes
 
 app.use('/ai', geminiRouter)
+
+app.use("/admin", adminRouter);  //!indicated
 
 app.get('/api', (req, res) => {
   res.json({message : "Hello from vercel"})

@@ -49,5 +49,21 @@ router.get('/google/callback', userController.googleAuthCallbackController);
 router.get('/github', userController.githubAuthController);
 router.get('/github/callback', userController.githubAuthCallbackController);
 
+//!indicate
+router.post(
+  "/contact",
+  authUser,
+  body("message").isString().withMessage("Message is required"),
+  userController.sendContactController
+);
+
+router.post(
+  "/feedback",
+  authUser,
+  body("message").isString().withMessage("Message is required"),
+  userController.sendFeedbackController
+);
+//!indicate
+
 export const userRoutes = router
 
